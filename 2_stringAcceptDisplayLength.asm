@@ -1,53 +1,57 @@
 section .data
-    m1 db "enter string",10    ;10 ->line feed 
-    l1 equ $-m1                         
-    m2 db "Entered String is ",10    
-    l2 equ $-m2                         
-    m3 db "Length is ",10            
-    l3 equ $-m3 
-    m4 db "Write an X86/64 ALP to accept a string and to display its length" ,10  
-    l4 equ $-m4
-     
+msg1 db 10,13,"Enter a string:"
+len1 equ $-msg1
 section .bss
-    string resb 50                      ;string array of size 50
-    strl equ $-string 
-    count resb 1
-    _output resb 16
+str1 resb 200 ;string declaration
+result resb 16
 section .text
-    global _start
-
+global _start
 _start:
-    print 1,1,m4,l4    ; display
-    print 1,1,m1,l1    ; display
- input:
-    print 0,0,string,strl
-    mov [count],rax ;count now points to rax 
- output:
-    print 1,1,m2,l2    ; display
-    print 1,1,string,strl
-    print 1,1,m3,l3    ; display 
-    mov rax,[count] ; value of count passed into rax   
-    call hex_to_dec
-    print 1,1,_output,16
-    
- exit:
-    mov rax, 60     ; system call for exit
-    mov rdi, 0      ; exit code 0
-    syscall
+;display
+mov Rax,1
+mov Rdi,1
+mov Rsi,msg1
+mov Rdx,len1
+syscall
+;store string
+mov rax,0
+mov rdi,0
+mov rsi,str1
+mov rdx,200
+syscall
+call display
 
-hex_to_dec:
-        mov rsi,_output+15  ; max size of display , for convinience set to 16 and rsipoints to output[16]
-        mov rcx,2        ; loop count , or number of digits displayed , 2 digits (unlikely we will enter string > 99)(prints preceding zeros otherwise)
-    letter2:	
-        xor rdx,rdx         ; setting rdx to null without setting a null byte (a tip i saw on reddit) needed to clean dl for use 
-        mov rbx,10          ; conversion base
-        div rbx             ; dividing by conversion base
-        cmp dl,09h          ; comparing 09h with dl , since the division remainder ends up in dx and since its one digits its in dl
-        jbe add30           ; if value under in 0-9 , we directly add 30h to get ascii 0-9
-    add30:	
-        add dl,30h          ; adding 30h
-        mov [rsi],dl        ; moving the ascii we generated to rsi
-        dec rsi             ; rsi now points to the next place in display or output[n-1]
-        dec rcx             ; loop 
-        jnz letter2
+;exit system call
+mov Rax ,60
+mov Rdi,0
+syscall
+
+%macro dispmsg 2
+mov Rax,1
+mov Rdi,1
+mov rsi,%1
+mov rdx,%2
+syscall
+%endmacro
+
+display:
+mov rbx,rax ; store no in rbx
+mov rdi,result ;point rdi to result variable
+mov cx,16 ;load count of rotation in cl
+up1:
+rol rbx,04 ;rotate no of left by four bits
+mov al,bl ; move lower byte in dl
+and al,0fh ;get only LSB
+cmp al,09h ;compare with 39h
+jg add_37 ;if greater than 39h skip add 37
+add al,30h
+jmp skip ;else add 30
+add_37:
+add al,37h
+skip:
+mov [rdi],al ;store ascii code in result variable
+inc rdi ; point to next byte
+dec cx ; decrement counter
+jnz up1 ; if not zero jump to repeat
+dispmsg result,16 ;call to macro
 ret
